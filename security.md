@@ -1,4 +1,4 @@
-### Security Policy – Hush
+# Security Policy – Hush
 
 This document describes the security goals, threat model, and limitations of Hush.
 Please read it before assuming anything heroic.
@@ -11,9 +11,9 @@ Modified protocol versions	    Not supported
 
 Only versions that preserve the cryptographic design and protocol compatibility are considered supported.
 
-### Threat Model
+## Threat Model
 
-## Hush is designed to protect against:
+### Hush is designed to protect against:
 
 Passive network surveillance
 
@@ -27,7 +27,7 @@ Accidental plaintext transmission
 
 Cryptographic downgrade attempts
 
-## Hush is not designed to protect against:
+### Hush is not designed to protect against:
 
 Compromised endpoints
 
@@ -43,9 +43,9 @@ Users trusting the wrong people
 
 If your device is compromised, Hush cannot help you.
 
-### Cryptographic Design
+## Cryptographic Design
 
-## Key Exchange
+### Key Exchange
 
 Algorithm: X25519 (ECDH)
 
@@ -56,7 +56,7 @@ Property: Forward secrecy
 Each session uses fresh keys.
 No long-term secrets are reused.
 
-## Key Derivation
+### Key Derivation
 
 KDF: HKDF with SHA-256
 
@@ -70,7 +70,7 @@ oniontalk-v1|s2c
 
 Output: 32 bytes per key (AES-256)
 
-## Directional key separation ensures:
+### Directional key separation ensures:
 
 Keys are never reused across directions
 
@@ -92,7 +92,7 @@ If decryption or authentication fails, the connection is terminated immediately.
 
 There is no fallback, no recovery mode, and no silent failure.
 
-## Transport Security
+### Transport Security
 Framing
 
 Length-prefixed frames (uint32, big-endian)
@@ -119,7 +119,7 @@ Server → Client	s2c
 
 Keys are never reused between sessions or directions.
 
-Tor Integration
+# Tor Integration
 
 Hush is designed to run over Tor
 
@@ -129,7 +129,7 @@ Hush does not attempt to bypass Tor
 
 Hush does not claim to anonymize traffic by itself
 
-Tor provides:
+## Tor provides:
 
 Network-level anonymity
 
@@ -141,13 +141,13 @@ End-to-end encryption
 
 Message authenticity
 
-They solve different problems and are meant to be used together.
+### They solve different problems and are meant to be used together.
 
-Authentication
+### Authentication
 
 Hush does not provide identity authentication.
 
-There is:
+#### There is:
 
 no identity verification
 
@@ -160,8 +160,8 @@ This is intentional.
 Hush provides a secure channel, not identity guarantees.
 If authentication is required, it must be implemented on top of the protocol.
 
-Memory Safety
-Go implementation
+# Memory Safety
+## Go implementation
 
 Uses memguard for sensitive data
 
@@ -169,7 +169,7 @@ Explicit zeroization
 
 Stronger guarantees
 
-Python implementation
+## Python implementation
 
 Best-effort only
 
@@ -178,33 +178,33 @@ Python’s garbage collector and immutable objects prevent reliable zeroization
 If memory scraping is part of your threat model:
 Use the Go implementation.
 
-Legal & Ethical Use
+# Legal & Ethical Use
 
 Hush is intended only for lawful and ethical purposes, including:
 
-private communication
+-private communication
 
-research and education
+-research and education
 
-learning about cryptography
+-learning about cryptography
 
-protecting personal privacy
+-protecting personal privacy
 
 You must not use this software to:
 
-facilitate criminal activity
+-facilitate criminal activity
 
-distribute illegal content
+-distribute illegal content
 
-evade law enforcement for illegal purposes
+-evade law enforcement for illegal purposes
 
-harass, threaten, or harm others
+-harass, threaten, or harm others
 
 The authors and contributors do not endorse and are not responsible for any illegal or malicious use of this software.
 
 Encryption is a tool — not a shield against accountability.
 
-Known Limitations
+## Known Limitations
 
 No replay protection beyond AEAD guarantees
 
@@ -218,7 +218,7 @@ No protection against compromised endpoints
 
 This is a secure channel — not a magic invisibility cloak.
 
-Reporting Security Issues
+## Reporting Security Issues
 
 If you believe you have found a security vulnerability:
 
@@ -232,7 +232,7 @@ State the threat model you are assuming
 
 Low-effort reports without technical detail may be ignored.
 
-Security Philosophy
+## Security Philosophy
 
 Small attack surface
 
@@ -248,7 +248,7 @@ No DIY crypto
 
 If it feels exciting, it is probably wrong.
 
-Final Note
+# Final Note
 
 Hush is designed to be secure by design,
 but no software can protect users from:
