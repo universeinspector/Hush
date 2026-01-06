@@ -7,7 +7,7 @@ Supported Versions:
 Component	Status
 Go implementation	            Supported
 Python implementation	        Supported
-Modified protocol versions	    Not supported
+Modified protocol versions	  Not supported
 
 Only versions that preserve the cryptographic design and protocol compatibility are considered supported.
 
@@ -15,31 +15,31 @@ Only versions that preserve the cryptographic design and protocol compatibility 
 
 ### Hush is designed to protect against:
 
-Passive network surveillance
+- Passive network surveillance
 
-Malicious or compromised relays
+- Malicious or compromised relays
 
-Traffic inspection at the transport layer
+- Traffic inspection at the transport layer
 
-Message tampering or forgery
+- Message tampering or forgery
 
-Accidental plaintext transmission
+- Accidental plaintext transmission
 
-Cryptographic downgrade attempts
+- Cryptographic downgrade attempts
 
 ### Hush is not designed to protect against:
 
-Compromised endpoints
+- Compromised endpoints
 
-Malware, keyloggers, or screen capture
+- Malware, keyloggers, or screen capture
 
-Physical access to the device
+- Physical access to the device
 
-Social engineering
+- Social engineering
 
-Operational security mistakes
+- Operational security mistakes
 
-Users trusting the wrong people
+- Users trusting the wrong people
 
 If your device is compromised, Hush cannot help you.
 
@@ -131,15 +131,15 @@ Hush does not claim to anonymize traffic by itself
 
 ## Tor provides:
 
-Network-level anonymity
+- Network-level anonymity
 
-Path obfuscation
+- Path obfuscation
 
 ## Hush provides:
 
-End-to-end encryption
+- End-to-end encryption
 
-Message authenticity
+- Message authenticity
 
 ### They solve different problems and are meant to be used together.
 
@@ -149,11 +149,11 @@ Hush does not provide identity authentication.
 
 #### There is:
 
-no identity verification
+- no identity verification
 
-no key pinning
+- no key pinning
 
-no trust establishment
+- no trust establishment
 
 This is intentional.
 
@@ -182,23 +182,23 @@ Use the Go implementation.
 
 Hush is intended only for lawful and ethical purposes, including:
 
--private communication
+- private communication
 
--research and education
+- research and education
 
--learning about cryptography
+- learning about cryptography
 
--protecting personal privacy
+- protecting personal privacy
 
 You must not use this software to:
 
--facilitate criminal activity
+- facilitate criminal activity
 
--distribute illegal content
+- distribute illegal content
 
--evade law enforcement for illegal purposes
+- evade law enforcement for illegal purposes
 
--harass, threaten, or harm others
+- harass, threaten, or harm others
 
 The authors and contributors do not endorse and are not responsible for any illegal or malicious use of this software.
 
