@@ -7,9 +7,9 @@ This is the friendly, honest, no-buzzword summary of Hush’s security model.
 If you want the serious version: see SECURITY.md.
 If you want the really short version: don’t do dumb things.
 
-## What Hush actually protects
+# What Hush actually protects
 
-# Hush does protect you against:
+## Hush does protect you against:
 
 - People watching the network
 
