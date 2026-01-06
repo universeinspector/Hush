@@ -2,17 +2,17 @@
 """
 OnionTalk (Python Port)
 
-Dieses Programm ist eine 1:1 kompatible Portierung der Go-Version:
-- X25519 Key Exchange
-- HKDF-SHA256 Key Derivation (oniontalk-v1|c2s / |s2c)
-- AES-256-GCM mit zufälligem Nonce
-- Frame-basiertes TCP-Protokoll (uint32 Big Endian)
-- Tor SOCKS5 Dialer
-- Interaktive Chat-Kommandos (.MULTI / .END / .QUIT)
+This file is a fully interoperable port of the Go implementation.
 
-Ziel:
-Python-Client <-> Go-Server
-Python-Server <-> Go-Client
+Cryptographic design:
+- X25519 (ECDH) for key exchange
+- HKDF-SHA256 for key derivation
+- AES-256-GCM for authenticated encryption
+- Directional key separation (c2s / s2c)
+- Length-prefixed framing over TCP
+
+Protocol compatibility:
+Python <-> Go communication is byte-for-byte compatible.
 """
 
 import argparse
@@ -25,44 +25,45 @@ import threading
 from dataclasses import dataclass
 from typing import Tuple
 
-import socks  # PySocks – notwendig für Tor SOCKS5
+import socks  # PySocks (SOCKS5 support for Tor)
 from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.primitives import hashes
 
-# ---------------------------------------------------------------------------
-# Netz & Protokoll-Konstanten (identisch zu Go)
-# ---------------------------------------------------------------------------
+
+
+# Network & protocol constants (must match Go implementation)
+
 
 DEFAULT_PORT = 8001
 
-# Tor SOCKS5 Proxy (wie in oniontalk.go)
+# Tor SOCKS5 proxy (same defaults as oniontalk.go)
 TOR_PROXY_HOST = "127.0.0.1"
 TOR_PROXY_PORT = 9050
 
 # framing.go
-LEN_PREFIX_SIZE = 4          # uint32
-NONCE_SIZE = 12              # AES-GCM Standard
-MAX_FRAME_SIZE = 1 << 20     # 1 MiB
+LEN_PREFIX_SIZE = 4          # uint32 length prefix
+NONCE_SIZE = 12              # AES-GCM standard nonce size
+MAX_FRAME_SIZE = 1 << 20     # 1 MiB upper bound
 
 # kdf.go
 PROTOCOL_INFO = "oniontalk-v1"
 
-# ---------------------------------------------------------------------------
-# Single-Client-Gate (entspricht clientConnected + Mutex in Go)
-# ---------------------------------------------------------------------------
+
+
+# Single-client gate (equivalent to clientConnected + mutex in Go)
+
 
 _client_connected = False
 _client_lock = threading.Lock()
 
 
-# ---------------------------------------------------------------------------
-# Hilfsfunktionen: CLI / Parsing
-# ---------------------------------------------------------------------------
+# CLI helpers
+
 
 def print_help(prog: str) -> None:
-    """Gibt exakt dieselbe Hilfe aus wie die Go-Version."""
+    """Prints the same help text as the Go version."""
     print("OnionTalk - Secure talk sessions over Tor\n")
     print("Usage:")
     print("  Listener mode:")
@@ -77,12 +78,10 @@ def print_help(prog: str) -> None:
 
 def parse_host_port(s: str) -> Tuple[str, int]:
     """
-    Akzeptiert:
-      - host
-      - host:port
-      - [ipv6]:port
+    Parses host[:port].
 
-    Onion-Adressen kommen üblicherweise ohne Port.
+    Onion addresses usually omit the port.
+    IPv6 is supported using [addr]:port syntax.
     """
     if s.startswith("[") and "]" in s:
         if "]:" in s:
@@ -99,7 +98,10 @@ def parse_host_port(s: str) -> Tuple[str, int]:
 
 def enforce_port(host: str, port: int) -> Tuple[str, int]:
     """
-    Erzwingt Port 8001 – exakt wie im Go-Code.
+    Enforces the fixed protocol port (8001).
+
+    This mirrors the explicit restriction in the Go code
+    and prevents accidental cross-protocol misuse.
     """
     if port != DEFAULT_PORT:
         raise SystemExit(
@@ -109,14 +111,14 @@ def enforce_port(host: str, port: int) -> Tuple[str, int]:
     return host, port
 
 
-# ---------------------------------------------------------------------------
-# Framing (bitgenau zu framing.go)
-# ---------------------------------------------------------------------------
+
+# Framing (bit-compatible with framing.go)
 
 def read_exact(sock: socket.socket, n: int) -> bytes:
     """
-    Liest exakt n Bytes vom Socket.
-    Entspricht io.ReadFull in Go.
+    Reads exactly n bytes from the socket.
+
+    Equivalent to io.ReadFull in Go.
     """
     buf = bytearray()
     while len(buf) < n:
@@ -129,7 +131,7 @@ def read_exact(sock: socket.socket, n: int) -> bytes:
 
 def write_all(sock: socket.socket, data: bytes) -> None:
     """
-    Schreibt alle Bytes zuverlässig.
+    Writes the full buffer to the socket, handling partial sends.
     """
     view = memoryview(data)
     sent = 0
@@ -142,10 +144,12 @@ def write_all(sock: socket.socket, data: bytes) -> None:
 
 def write_frame(sock: socket.socket, payload: bytes) -> None:
     """
-    framing.go:
-      - payload darf nicht leer sein
-      - max 1 MiB
-      - uint32 Big Endian Längenpräfix
+    Writes a single frame:
+      - 4-byte big-endian length prefix
+      - payload (must be non-empty)
+      - payload size capped at 1 MiB
+
+    Matches framing.go exactly.
     """
     if len(payload) == 0:
         raise ValueError("empty payload")
@@ -159,9 +163,7 @@ def write_frame(sock: socket.socket, payload: bytes) -> None:
 
 def read_frame(sock: socket.socket) -> bytes:
     """
-    framing.go:
-      - liest 4 Byte Länge
-      - prüft 0 < n <= 1 MiB
+    Reads a single framed message and validates size constraints.
     """
     header = read_exact(sock, LEN_PREFIX_SIZE)
     (n,) = struct.unpack(">I", header)
@@ -172,16 +174,21 @@ def read_frame(sock: socket.socket) -> bytes:
     return read_exact(sock, n)
 
 
-# ---------------------------------------------------------------------------
-# KDF (bitgenau zu kdf.go)
-# ---------------------------------------------------------------------------
+
+# Key derivation (bit-compatible with kdf.go)
+
 
 def derive_key(shared_secret: bytes, info: str) -> bytes:
     """
-    HKDF-SHA256
-    - salt = nil
-    - info = oniontalk-v1|{c2s,s2c}
-    - output = 32 Bytes (AES-256)
+    HKDF-SHA256 key derivation.
+
+    Parameters:
+    - shared_secret: X25519 ECDH output
+    - salt: None (nil in Go)
+    - info: protocol context string
+
+    Output:
+    - 32 bytes (AES-256 key)
     """
     hkdf = HKDF(
         algorithm=hashes.SHA256(),
@@ -194,42 +201,45 @@ def derive_key(shared_secret: bytes, info: str) -> bytes:
 
 def derive_directional_keys(shared_secret: bytes) -> Tuple[bytes, bytes]:
     """
-    Liefert zwei unabhängige Richtungskeys:
-      - c2s = client -> server
-      - s2c = server -> client
+    Derives two independent keys for directional encryption:
+
+    c2s: client -> server
+    s2c: server -> client
     """
     c2s = derive_key(shared_secret, f"{PROTOCOL_INFO}|c2s")
     s2c = derive_key(shared_secret, f"{PROTOCOL_INFO}|s2c")
     return c2s, s2c
 
 
-# ---------------------------------------------------------------------------
-# Session Keys (klar getrennt Send/Recv)
-# ---------------------------------------------------------------------------
+# Session key container
+
 
 @dataclass
 class SessionKeys:
+    """
+    Explicit separation between sending and receiving keys.
+    """
     send_key: bytes
     recv_key: bytes
 
 
-# ---------------------------------------------------------------------------
-# Key Exchange (X25519)
-# ---------------------------------------------------------------------------
+
+# X25519 key exchange
+
 
 def perform_key_exchange(conn: socket.socket, is_server: bool) -> SessionKeys:
     """
-    Ablauf exakt wie in oniontalk.go:
+    Performs the X25519 key exchange.
 
     Server:
-      1. liest Client-Pubkey
-      2. sendet eigenen Pubkey
-      3. berechnet Shared Secret
+      1. Receives client public key
+      2. Sends server public key
+      3. Computes shared secret
 
     Client:
-      1. sendet eigenen Pubkey
-      2. liest Server-Pubkey
-      3. berechnet Shared Secret
+      1. Sends client public key
+      2. Receives server public key
+      3. Computes shared secret
     """
     private_key = x25519.X25519PrivateKey.generate()
     public_bytes = private_key.public_key().public_bytes_raw()
@@ -244,25 +254,25 @@ def perform_key_exchange(conn: socket.socket, is_server: bool) -> SessionKeys:
         peer = x25519.X25519PublicKey.from_public_bytes(server_pub)
 
     shared_secret = private_key.exchange(peer)
-
     c2s, s2c = derive_directional_keys(shared_secret)
 
-    # Key-Separation identisch zur Go-Version
+    # Directional key assignment must match Go logic
     if is_server:
         return SessionKeys(send_key=s2c, recv_key=c2s)
     else:
         return SessionKeys(send_key=c2s, recv_key=s2c)
 
 
-# ---------------------------------------------------------------------------
-# Verschlüsselte Kommunikation
-# ---------------------------------------------------------------------------
+
+# Encrypted messaging
+
 
 def send_encrypted(conn: socket.socket, aead: AESGCM, msg: str) -> None:
     """
-    - erzeugt zufälligen Nonce
-    - AES-GCM encrypt
-    - nonce || ciphertext als Frame
+    Encrypts and sends a single message.
+
+    Layout:
+      frame = nonce || ciphertext
     """
     nonce = os.urandom(NONCE_SIZE)
     ciphertext = aead.encrypt(nonce, msg.encode("utf-8"), None)
